@@ -1,4 +1,11 @@
 describe('auth().currentUser', () => {
+  beforeEach(async () => {
+    if (firebase.auth().currentUser) {
+      await firebase.auth().signOut();
+      await sleep(50);
+    }
+  });
+
   describe('getIdToken()', () => {
     it('should return a token', async () => {
       const random = randomString(12, '#aA');
@@ -456,18 +463,6 @@ describe('auth().currentUser', () => {
         firebase.auth().currentUser.reauthenticateWithRedirect();
       }).should.throw(
         'User.reauthenticateWithRedirect() is unsupported by the native Firebase SDKs.'
-      );
-      await firebase.auth().signOut();
-    });
-  });
-
-  describe('updatePhoneNumber()', () => {
-    it('should throw an unsupported error', async () => {
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
-      (() => {
-        firebase.auth().currentUser.updatePhoneNumber();
-      }).should.throw(
-        'User.updatePhoneNumber() is unsupported by the native Firebase SDKs.'
       );
       await firebase.auth().signOut();
     });
