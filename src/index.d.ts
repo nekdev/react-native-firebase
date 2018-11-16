@@ -1,4 +1,4 @@
-// Type definitions for React Native Firebase v4.2.0
+// Type definitions for React Native Firebase v5.0.0
 // Project: https://github.com/invertase/react-native-firebase
 // Definitions by: React Native Firebase Contributors
 // TypeScript Version: 2.1
@@ -104,6 +104,7 @@ declare module 'react-native-firebase' {
   export const crashlytics: CrashlyticsModule;
   export const database: DatabaseModule;
   export const firestore: FirestoreModule;
+  export const functions: FunctionsModule;
   export const iid: IidModule;
   // export const invites: InvitesModule;
   export const links: LinksModule;
@@ -188,22 +189,22 @@ declare module 'react-native-firebase' {
        */
       bundleID?: string;
       /**
-       * defualt ""
+       * default ""
        * The Google App ID that is used to uniquely identify an instance of an app.
        */
       googleAppID?: string;
       /**
-       * deufalt ""
+       * default ""
        * The database root (i.e. https://my-app.firebaseio.com)
        */
       databaseURL?: string;
       /**
-       * defualt ""
+       * default ""
        * URL scheme to set up durable deep link service
        */
       deepLinkURLScheme?: string;
       /**
-       * defualt ""
+       * default ""
        * The Google Cloud storage bucket name
        */
       storageBucket?: string;
@@ -228,7 +229,7 @@ declare module 'react-native-firebase' {
        */
       clientID?: string;
       /**
-       * defualt ""
+       * default ""
        * The secret iOS API key used for authenticating requests from our app
        */
       APIKey?: string;
@@ -575,7 +576,10 @@ declare module 'react-native-firebase' {
 
         exists(): boolean;
 
-        exportVal(): any;
+        exportVal(): {
+          '.value': any;
+          '.priority': string | number | null;
+        };
 
         forEach(action: (a: database.DataSnapshot) => boolean): boolean;
 
@@ -682,16 +686,16 @@ declare module 'react-native-firebase' {
        * Sets the minimum engagement time required before starting a session.
        * The default value is 10000 (10 seconds)
        */
-      setMinimumSessionDuration(miliseconds: number): void;
+      setMinimumSessionDuration(milliseconds: number): void;
 
       /**
        * Sets the duration of inactivity that terminates the current session.
        * The default value is 1800000 (30 minutes).
        */
-      setSessionTimeoutDuration(miliseconds: number): void;
+      setSessionTimeoutDuration(milliseconds: number): void;
 
       /**
-       * Gives a user a uniqiue identificaition.
+       * Gives a user a unique identification.
        * @example
        * const id = firebase.auth().currentUser.uid;
        *
@@ -736,6 +740,17 @@ declare module 'react-native-firebase' {
     type UserMetadata = {
       creationTime?: string;
       lastSignInTime?: string;
+    };
+
+    type IdTokenResult = {
+      token: string;
+      authTime: string;
+      issuedAtTime: string;
+      expirationTime: string;
+      signInProvider: null | string;
+      claims: {
+        [key: string]: any;
+      };
     };
 
     interface User {
@@ -789,8 +804,19 @@ declare module 'react-native-firebase' {
        */
       getIdToken(forceRefresh?: boolean): Promise<string>;
 
-      getToken(forceRefresh?: boolean): Promise<string>;
+      /**
+       * Returns a firebase.auth.IdTokenResult object which contains the ID token JWT string and
+       * other helper properties for getting different data associated with the token as well as
+       * all the decoded payload claims.
+       *
+       * @param forceRefresh boolean Force refresh regardless of token expiration.
+       */
+      getIdTokenResult(forceRefresh?: boolean): Promise<IdTokenResult>;
 
+      /**
+       * @deprecated
+       * @param credential
+       */
       linkAndRetrieveDataWithCredential(
         credential: AuthCredential
       ): Promise<UserCredential>;
@@ -798,8 +824,12 @@ declare module 'react-native-firebase' {
       /**
        * Link the user with a 3rd party credential provider.
        */
-      linkWithCredential(credential: AuthCredential): Promise<User>;
+      linkWithCredential(credential: AuthCredential): Promise<UserCredential>;
 
+      /**
+       * @deprecated
+       * @param credential
+       */
       reauthenticateAndRetrieveDataWithCredential(
         credential: AuthCredential
       ): Promise<UserCredential>;
@@ -807,7 +837,9 @@ declare module 'react-native-firebase' {
       /**
        * Re-authenticate a user with a third-party authentication provider
        */
-      reauthenticateWithCredential(credential: AuthCredential): Promise<void>;
+      reauthenticateWithCredential(
+        credential: AuthCredential
+      ): Promise<UserCredential>;
 
       /**
        * Refreshes the current user.
@@ -872,7 +904,12 @@ declare module 'react-native-firebase' {
         email?: string;
         fromEmail?: string;
       };
-      operation: 'PASSWORD_RESET' | 'VERIFY_EMAIL' | 'RECOVER_EMAIL';
+      operation:
+        | 'PASSWORD_RESET'
+        | 'VERIFY_EMAIL'
+        | 'RECOVER_EMAIL'
+        | 'EMAIL_SIGNIN'
+        | 'ERROR';
     }
 
     interface ConfirmationResult {
@@ -956,22 +993,23 @@ declare module 'react-native-firebase' {
           smsCode: string
         ): Promise<null>;
       }
-
+      type OrNull<T> = T | null;
+      type AuthListenerCallback = (user: OrNull<User>) => void;
       interface Auth {
         readonly app: App;
         /**
          * Returns the current Firebase authentication state.
          */
-        authResult: AuthResult | null;
+        authResult: OrNull<AuthResult>;
         /**
          * Returns the currently signed-in user (or null). See the User class documentation for further usage.
          */
-        currentUser: User | null;
+        currentUser: OrNull<User>;
 
         /**
          * Gets/Sets the language for the app instance
          */
-        languageCode: string | null;
+        languageCode: OrNull<string>;
 
         settings: AuthSettings;
 
@@ -980,32 +1018,40 @@ declare module 'react-native-firebase' {
          * This method returns a unsubscribe function to stop listening to events.
          * Always ensure you unsubscribe from the listener when no longer needed to prevent updates to components no longer in use.
          */
-        onAuthStateChanged(listener: Function): () => void;
+        onAuthStateChanged(listener: AuthListenerCallback): () => void;
 
         /**
          * Listen for changes in id token.
          * This method returns a unsubscribe function to stop listening to events.
          * Always ensure you unsubscribe from the listener when no longer needed to prevent updates to components no longer in use.
          */
-        onIdTokenChanged(listener: Function): () => void;
+        onIdTokenChanged(listener: AuthListenerCallback): () => void;
 
         /**
          * Listen for changes in the user.
          * This method returns a unsubscribe function to stop listening to events.
          * Always ensure you unsubscribe from the listener when no longer needed to prevent updates to components no longer in use.
          */
-        onUserChanged(listener: Function): () => void;
+        onUserChanged(listener: AuthListenerCallback): () => void;
 
         signOut(): Promise<void>;
 
+        /**
+         * @deprecated
+         */
         signInAnonymouslyAndRetrieveData(): Promise<UserCredential>;
 
         /**
          * Sign an anonymous user.
          * If the user has already signed in, that user will be returned
          */
-        signInAnonymously(): Promise<User>;
+        signInAnonymously(): Promise<UserCredential>;
 
+        /**
+         * @deprecated
+         * @param email
+         * @param password
+         */
         createUserAndRetrieveDataWithEmailAndPassword(
           email: string,
           password: string
@@ -1025,8 +1071,13 @@ declare module 'react-native-firebase' {
         createUserWithEmailAndPassword(
           email: string,
           password: string
-        ): Promise<User>;
+        ): Promise<UserCredential>;
 
+        /**
+         * @deprecated
+         * @param email
+         * @param password
+         */
         signInAndRetrieveDataWithEmailAndPassword(
           email: string,
           password: string
@@ -1039,8 +1090,12 @@ declare module 'react-native-firebase' {
         signInWithEmailAndPassword(
           email: string,
           password: string
-        ): Promise<User>;
+        ): Promise<UserCredential>;
 
+        /**
+         * @deprecated
+         * @param token
+         */
         signInAndRetrieveDataWithCustomToken(
           token: string
         ): Promise<UserCredential>;
@@ -1051,8 +1106,12 @@ declare module 'react-native-firebase' {
          * use the signInWithCustomToken() function.
          * It accepts one parameter, the custom token:
          */
-        signInWithCustomToken(token: string): Promise<User>;
+        signInWithCustomToken(token: string): Promise<UserCredential>;
 
+        /**
+         * @deprecated
+         * @param credential
+         */
         signInAndRetrieveDataWithCredential(
           credential: AuthCredential
         ): Promise<UserCredential>;
@@ -1061,7 +1120,9 @@ declare module 'react-native-firebase' {
          * Sign in the user with a 3rd party credential provider.
          * credential requires the following properties:
          */
-        signInWithCredential(credential: AuthCredential): Promise<User>;
+        signInWithCredential(
+          credential: AuthCredential
+        ): Promise<UserCredential>;
 
         /**
          * Asynchronously signs in using a phone number.
@@ -1113,9 +1174,9 @@ declare module 'react-native-firebase' {
         checkActionCode(code: string): Promise<ActionCodeInfo>;
 
         /**
-         * Returns a list of authentication providers that can be used to sign in a given user (identified by its main email address).
+         * Returns a list of authentication methods that can be used to sign in a given user (identified by its main email address).
          */
-        fetchProvidersForEmail(email: string): Promise<Array<string>>;
+        fetchSignInMethodsForEmail(email: string): Promise<Array<string>>;
 
         verifyPasswordResetCode(code: string): Promise<string>;
 
@@ -1182,7 +1243,7 @@ declare module 'react-native-firebase' {
         subscribeToTopic(topic: string): void;
 
         /**
-         * Unsubscribes the device from a topic.
+         * Unsubscribe the device from a topic.
          */
         unsubscribeFromTopic(topic: string): void;
       }
@@ -1212,8 +1273,21 @@ declare module 'react-native-firebase' {
         setTtl(ttl: number): RemoteMessage;
       }
 
+      class IOSMessaging {
+        /**
+         * Returns the devices APNS token.
+         */
+        getAPNSToken(): Promise<string | null>;
+
+        /**
+         * Register for iOS remote notifications
+         */
+        registerForRemoteNotifications(): Promise<void>;
+      }
+
       interface MessagingStatics {
         RemoteMessage: typeof RemoteMessage;
+        ios: IOSMessaging;
       }
     }
 
@@ -1635,7 +1709,7 @@ declare module 'react-native-firebase' {
       class IOSNotification {
         alertAction?: string;
         attachments: IOSAttachment[];
-        badge?: string;
+        badge?: number;
         category?: string;
         hasAction?: boolean;
         launchImage?: string;
@@ -1650,7 +1724,7 @@ declare module 'react-native-firebase' {
 
         setAlertAction(alertAction: string): Notification;
 
-        setBadge(badge: string): Notification;
+        setBadge(badge: number): Notification;
 
         setCategory(category: string): Notification;
 
@@ -1935,7 +2009,10 @@ declare module 'react-native-firebase' {
         createDynamicLink(dynamicLink: DynamicLink): Promise<string>;
 
         /** Creates a short dynamic link. */
-        createShortDynamicLink(type: 'SHORT' | 'UNGUESSABLE'): Promise<string>;
+        createShortDynamicLink(
+          dynamicLink: DynamicLink,
+          type: 'SHORT' | 'UNGUESSABLE'
+        ): Promise<string>;
 
         /**
          * Returns the URL that the app has been launched from. If the app was
@@ -2370,10 +2447,16 @@ declare module 'react-native-firebase' {
         constructor(...segments: string[]);
       }
 
+      type AnyJs = null | undefined | boolean | number | string | object;
+
       class FieldValue {
         static delete(): FieldValue;
 
         static serverTimestamp(): FieldValue;
+
+        static arrayUnion(...elements: AnyJs[]): FieldValue;
+
+        static arrayRemove(...elements: AnyJs[]): FieldValue;
       }
 
       class GeoPoint {
@@ -2670,7 +2753,14 @@ declare module 'react-native-firebase' {
         }
 
         type QueryDirection = 'asc' | 'ASC' | 'desc' | 'DESC';
-        type QueryOperator = '=' | '==' | '>' | '>=' | '<' | '<=' | 'array-contains';
+        type QueryOperator =
+          | '='
+          | '=='
+          | '>'
+          | '>='
+          | '<'
+          | '<='
+          | 'array-contains';
 
         interface TypeMap {
           type:
@@ -2792,7 +2882,7 @@ declare module 'react-native-firebase/functions' {
   export type HttpsErrorCode = RNFirebase.functions.HttpsErrorCode;
   export type FunctionsErrorCode = RNFirebase.functions.FunctionsErrorCode;
   export type HttpsCallableResult = RNFirebase.functions.HttpsCallableResult;
-  export type Funtions = RNFirebase.functions.Functions;
+  export type Functions = RNFirebase.functions.Functions;
   export type HttpsError = RNFirebase.functions.HttpsError;
 }
 

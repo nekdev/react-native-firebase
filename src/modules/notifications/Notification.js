@@ -8,7 +8,7 @@ import IOSNotification from './IOSNotification';
 import { generatePushID, isObject } from '../../utils';
 
 import type { NativeNotification } from './types';
-import type Notifications from '.';
+import type Notifications from './';
 
 export type NotificationOpen = {|
   action: string,
@@ -56,6 +56,16 @@ export default class Notification {
     } else {
       this._android = new AndroidNotification(this, nativeNotification && nativeNotification.android);
     } // Defaults
+    this._android = new AndroidNotification(
+      this,
+      nativeNotification && nativeNotification.android
+    );
+
+    this._ios = new IOSNotification(
+      this,
+      notifications,
+      nativeNotification && nativeNotification.ios
+    );
 
     // Defaults
     this._data = this._data || {};

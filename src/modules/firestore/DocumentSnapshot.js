@@ -8,7 +8,7 @@ import Path from './Path';
 import { isObject, deepGet } from '../../utils';
 import { parseNativeMap } from './utils/serialize';
 
-import type Firestore from '.';
+import type Firestore from './';
 import type {
   NativeDocumentSnapshot,
   SnapshotMetadata,

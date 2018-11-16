@@ -10,14 +10,13 @@ describe('auth().currentUser', () => {
     it('should return a token', async () => {
       const random = randomString(12, '#aA');
       const email = `${random}@${random}.com`;
-      const pass = random;
 
-      const newUser = await firebase
+      const { user } = await firebase
         .auth()
-        .createUserWithEmailAndPassword(email, pass);
+        .createUserWithEmailAndPassword(email, random);
 
       // Test
-      const token = await newUser.getIdToken();
+      const token = await user.getIdToken();
 
       // Assertions
       token.should.be.a.String();
@@ -28,22 +27,39 @@ describe('auth().currentUser', () => {
     });
   });
 
-  describe('getToken()', () => {
-    it('should return a token', async () => {
+  describe('getIdTokenResult()', () => {
+    it('should return a valid IdTokenResult Object', async () => {
       const random = randomString(12, '#aA');
       const email = `${random}@${random}.com`;
-      const pass = random;
 
-      const newUser = await firebase
+      const { user } = await firebase
         .auth()
-        .createUserWithEmailAndPassword(email, pass);
+        .createUserWithEmailAndPassword(email, random);
 
       // Test
-      const token = await newUser.getToken();
+      const tokenResult = await user.getIdTokenResult();
 
-      // Assertions
-      token.should.be.a.String();
-      token.length.should.be.greaterThan(24);
+      tokenResult.token.should.be.a.String();
+      tokenResult.authTime.should.be.a.String();
+      tokenResult.issuedAtTime.should.be.a.String();
+      tokenResult.expirationTime.should.be.a.String();
+
+      new Date(tokenResult.authTime)
+        .toString()
+        .should.not.equal('Invalid Date');
+      new Date(tokenResult.issuedAtTime)
+        .toString()
+        .should.not.equal('Invalid Date');
+      new Date(tokenResult.expirationTime)
+        .toString()
+        .should.not.equal('Invalid Date');
+
+      tokenResult.claims.should.be.a.Object();
+      tokenResult.claims.iat.should.be.a.Number();
+      tokenResult.claims.iss.should.be.a.String();
+
+      tokenResult.signInProvider.should.equal('password');
+      tokenResult.token.length.should.be.greaterThan(24);
 
       // Clean up
       await firebase.auth().currentUser.delete();
@@ -56,7 +72,7 @@ describe('auth().currentUser', () => {
       const email = `${random}@${random}.com`;
       const pass = random;
 
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
+      await firebase.auth().signInAnonymously();
       const currentUser = firebase.auth().currentUser;
 
       // Test
@@ -65,9 +81,12 @@ describe('auth().currentUser', () => {
         pass
       );
 
-      const linkedUser = await currentUser.linkWithCredential(credential);
+      const linkedUserCredential = await currentUser.linkWithCredential(
+        credential
+      );
 
       // Assertions
+      const linkedUser = linkedUserCredential.user;
       linkedUser.should.be.an.Object();
       linkedUser.should.equal(firebase.auth().currentUser);
       linkedUser.email.toLowerCase().should.equal(email.toLowerCase());
@@ -84,7 +103,7 @@ describe('auth().currentUser', () => {
       const email = 'test@test.com';
       const pass = 'test1234';
 
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
+      await firebase.auth().signInAnonymously();
       const currentUser = firebase.auth().currentUser;
 
       // Test
@@ -99,7 +118,7 @@ describe('auth().currentUser', () => {
         await firebase.auth().signOut();
 
         // Reject
-        Promise.reject(new Error('Did not error on link'));
+        return Promise.reject(new Error('Did not error on link'));
       } catch (error) {
         // Assertions
         error.code.should.equal('auth/email-already-in-use');
@@ -119,7 +138,7 @@ describe('auth().currentUser', () => {
       const email = `${random}@${random}.com`;
       const pass = random;
 
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
+      await firebase.auth().signInAnonymously();
       const currentUser = firebase.auth().currentUser;
 
       // Test
@@ -150,7 +169,7 @@ describe('auth().currentUser', () => {
       const email = 'test@test.com';
       const pass = 'test1234';
 
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
+      await firebase.auth().signInAnonymously();
       const currentUser = firebase.auth().currentUser;
 
       // Test
@@ -165,7 +184,7 @@ describe('auth().currentUser', () => {
         await firebase.auth().signOut();
 
         // Reject
-        Promise.reject(new Error('Did not error on link'));
+        return Promise.reject(new Error('Did not error on link'));
       } catch (error) {
         // Assertions
         error.code.should.equal('auth/email-already-in-use');
@@ -185,15 +204,14 @@ describe('auth().currentUser', () => {
       const email = `${random}@${random}.com`;
       const pass = random;
 
-      await firebase
-        .auth()
-        .createUserAndRetrieveDataWithEmailAndPassword(email, pass);
+      await firebase.auth().createUserWithEmailAndPassword(email, pass);
 
       // Test
       const credential = firebase.auth.EmailAuthProvider.credential(
         email,
         pass
       );
+
       await firebase
         .auth()
         .currentUser.reauthenticateWithCredential(credential);
@@ -222,6 +240,7 @@ describe('auth().currentUser', () => {
         email,
         pass
       );
+
       await firebase
         .auth()
         .currentUser.reauthenticateAndRetrieveDataWithCredential(credential);
@@ -237,7 +256,7 @@ describe('auth().currentUser', () => {
 
   describe('reload()', () => {
     it('should not error', async () => {
-      await firebase.auth().signInAnonymouslyAndRetrieveData();
+      await firebase.auth().signInAnonymously();
 
       try {
         await firebase.auth().currentUser.reload();
@@ -245,7 +264,7 @@ describe('auth().currentUser', () => {
       } catch (error) {
         // Reject
         await firebase.auth().signOut();
-        Promise.reject(new Error('reload() caused an error', error));
+        return Promise.reject(new Error('reload() caused an error', error));
       }
     });
   });
@@ -266,7 +285,7 @@ describe('auth().currentUser', () => {
       } catch (error) {
         // Reject
         await firebase.auth().currentUser.delete();
-        Promise.reject(
+        return Promise.reject(
           new Error('sendEmailVerification() caused an error', error)
         );
       }

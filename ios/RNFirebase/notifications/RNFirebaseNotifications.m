@@ -99,11 +99,12 @@ RCT_EXPORT_MODULE();
 }
 
 RCT_EXPORT_METHOD(complete:(NSString*)handlerKey fetchResult:(UIBackgroundFetchResult)fetchResult) {
-    void (^completionHandler)(UIBackgroundFetchResult) = completionHandlers[handlerKey];
-    completionHandlers[handlerKey] = nil;
-
-    if(completionHandler != nil) {
-        completionHandler(fetchResult);
+    if (handlerKey != nil) {
+        void (^completionHandler)(UIBackgroundFetchResult) = completionHandlers[handlerKey];
+        if(completionHandler != nil) {
+            completionHandlers[handlerKey] = nil;
+            completionHandler(fetchResult);
+        }
     }
 }
 
@@ -142,13 +143,17 @@ RCT_EXPORT_METHOD(complete:(NSString*)handlerKey fetchResult:(UIBackgroundFetchR
     // For onOpened events, we set the default action name as iOS 8/9 has no concept of actions
     if (event == NOTIFICATIONS_NOTIFICATION_OPENED) {
         notification = @{
-                         @"action": DEFAULT_ACTION,
-                         @"notification": notification
-                         };
+            @"action": DEFAULT_ACTION,
+            @"notification": notification
+        };
     }
 
-    completionHandlers[handlerKey] = completionHandler;
-    
+    if (handlerKey != nil) {
+        completionHandlers[handlerKey] = completionHandler;
+    } else {
+        completionHandler(UIBackgroundFetchResultNoData);
+    }
+
     [self sendJSEvent:self name:event body:notification];
 }
 
@@ -561,9 +566,11 @@ RCT_EXPORT_METHOD(jsInitialised:(RCTPromiseResolveBlock)resolve rejecter:(RCTPro
                 calendarUnit = NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
             } else if ([interval isEqualToString:@"week"]) {
                 calendarUnit = NSCalendarUnitWeekday | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
+            } else {
+                calendarUnit = NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
             }
         } else {
-            // Needs to match exactly to the secpmd
+            // Needs to match exactly to the second
             calendarUnit = NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
         }
 
